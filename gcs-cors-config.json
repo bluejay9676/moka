@@ -1,0 +1,13 @@
+[
+    {
+      "origin": ["*"],
+      "method": ["*"],
+      "responseHeader":  [
+        "Content-Type",
+        "access-control-allow-origin",
+        "X-Goog-Content-Length-Range",
+        "x-goog-resumable"
+      ],
+      "maxAgeSeconds": 3600
+    }
+]

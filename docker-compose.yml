@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  mokabackend:
+    image: mokabackend
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    command: python /code/moka/manage.py runserver 0.0.0.0:8000
+    ports:
+      - 8000:8000
+      - 5678:5678
+    environment:
+      - PORT=8000
+    env_file:
+      - ./.env.local
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+  db:
+    image: postgres
+    ports:
+      - 5432:5432
+    env_file: ./.env.local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: "redis:6.2.5-alpine"
+    ports:
+      - "6379:6379"
+    # The Redis logs are fairly useless and junk up the output
+    # when Docker Compose starts up. Trim them down.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+    volumes:
+      # Persist Redis data so it can survive `docker-compose down`.
+      - ./.redis-volume:/data
+
+  
+volumes:
+  postgres_data:

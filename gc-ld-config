@@ -1,0 +1,16 @@
+defaultService: projects/your-project-name/global/backendBuckets/moka-prod-cdn
+name: path-matcher-1
+pathRules:
+
+- paths:
+  - /test-images/\*
+    routeAction:
+    urlRewrite:
+    pathPrefixRewrite: /
+    service: projects/your-project-name/global/backendBuckets/moka-test-cdn
+- paths:
+  - /images/\*
+    routeAction:
+    urlRewrite:
+    pathPrefixRewrite: /
+    service: projects/your-project-name/global/backendBuckets/moka-prod-cdn

@@ -1,0 +1,73 @@
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START cloudrun_django_cloudmigrate]
+steps:
+  - id: "build image"
+    name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-t", "${_IMAGE_NAME}", "."]
+
+  - id: "push image"
+    name: "gcr.io/cloud-builders/docker"
+    args: ["push", "${_IMAGE_NAME}"]
+
+  # From https://github.com/GoogleCloudPlatform/django-demo-app-unicodex
+  - id: "layer"
+    name: "gcr.io/cloud-builders/docker"
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        echo "FROM $_IMAGE_NAME
+        COPY --from=gcr.io/cloudsql-docker/gce-proxy /cloud_sql_proxy /cloudsql/cloud_sql_proxy" > Dockerfile-proxy;
+        docker build -f Dockerfile-proxy -t ${_IMAGE_NAME}-proxy .
+
+  - id: "migrate"
+    name: "${_IMAGE_NAME}-proxy"
+    entrypoint: /bin/bash
+    env:
+      - "PROJECT_ID=$PROJECT_ID"
+      - "USE_CLOUD_SQL_AUTH_PROXY=true"
+    args:
+      - "-c"
+      - |
+        /cloudsql/cloud_sql_proxy -instances=${_INSTANCE_CONNECTION_NAME}=tcp:${_DATABASE_PORT} & sleep 2;
+        python moka/manage.py migrate
+  - id: "collect static"
+    name: "${_IMAGE_NAME}-proxy"
+    entrypoint: /bin/bash
+    env:
+      - "PROJECT_ID=$PROJECT_ID"
+      - "USE_CLOUD_SQL_AUTH_PROXY=true"
+    args:
+      - "-c"
+      - |
+        /cloudsql/cloud_sql_proxy -instances=${_INSTANCE_CONNECTION_NAME}=tcp:${_DATABASE_PORT} & sleep 2;
+        python moka/manage.py collectstatic --no-input
+
+substitutions:
+  _INSTANCE_NAME: moka-prod # DB instance name
+  _REGION: us-central1
+  _DATABASE_PORT: "5432"
+  _SERVICE_NAME: moka # Cloud run service name
+  # _SECRET_SETTINGS_NAME: moka_prod # Secret manager setting name
+  _IMAGE_NAME: gcr.io/${PROJECT_ID}/${_SERVICE_NAME}
+  _INSTANCE_CONNECTION_NAME: ${PROJECT_ID}:${_REGION}:${_INSTANCE_NAME}
+
+images:
+  - $_IMAGE_NAME
+
+options:
+  dynamic_substitutions: true
+# [END cloudrun_django_cloudmigrate]

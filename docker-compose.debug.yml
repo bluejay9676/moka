@@ -1,0 +1,27 @@
+version: '3.4'
+
+services:
+  mokabackend:
+    image: mokabackend
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+    command: ["sh", "-c", "pip install debugpy -t /tmp && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 moka/manage.py runserver 0.0.0.0:8000 --nothreading --noreload"]
+    env_file:
+      - ./.env.dev
+    ports:
+      - 8000:8000
+      - 5678:5678
+    depends_on:
+      - db
+  db:
+    image: postgres
+    container_name: dev-db
+    ports:
+      - 5432:5432
+    env_file: ./.env.dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+volumes:
+  postgres_data:

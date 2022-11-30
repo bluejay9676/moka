@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  mokabackend:
+    image: mokabackend
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    command: python /code/moka/manage.py runserver 0.0.0.0:8000
+    ports:
+      - 8000:8000
+      - 5678:5678
+    volumes:
+      - .:/code
+    environment:
+      - SYSTEM_ENV=prod
+      - GOOGLE_CLOUD_PROJECT=cosmic-quarter-343904
+      - PROJECTNUM=753331081032
+      - USE_CLOUD_SQL_AUTH_PROXY=true
+      - USE_LOCAL_SQL_AUTH_PROXY=true
+      - GOOGLE_APPLICATION_CREDENTIALS=/code/gcp-prod-creds.json
+    depends_on:
+      - cloudsqlproxy
+  cloudsqlproxy:
+    container_name: cloudsql-proxy
+    image: gcr.io/cloudsql-docker/gce-proxy:1.19.1
+    volumes:
+      - ./gcp-prod-creds.json:/secrets/cloudsql/creds.json
+    ports:
+      - 127.0.0.1:5432:5432
+    command: /cloud_sql_proxy -instances="cosmic-quarter-343904:us-central1:moka-prod"=tcp:0.0.0.0:5432 -credential_file=/secrets/cloudsql/creds.json
+    restart: always
+volumes:
+  postgres_data:
